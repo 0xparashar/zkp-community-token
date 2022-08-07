@@ -208,14 +208,7 @@ contract Governor is GovernorBravoDelegateStorage {
     ICommunityToken public communityToken;
     uint public communityId;
 
-    /**
-      * @notice Used to initialize the contract during delegator contructor
-      * @param timelock_ The address of the Timelock
-      * @param comp_ The address of the COMP token
-      * @param votingPeriod_ The initial voting period
-      * @param votingDelay_ The initial voting delay
-      * @param proposalThreshold_ The initial proposal threshold
-      */
+
     function initialize(address communityToken_, uint id,address timelock_, address comp_, uint votingPeriod_, uint votingDelay_, uint proposalThreshold_) public {
         require(address(timelock) == address(0), "GovernorBravo::initialize: can only initialize once");
         require(timelock_ != address(0), "GovernorBravo::initialize: invalid timelock address");

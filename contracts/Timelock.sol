@@ -11,7 +11,7 @@ contract Timelock {
     event QueueTransaction(bytes32 indexed txHash, address indexed target, uint value, string signature, bytes data, uint eta);
 
     uint public constant GRACE_PERIOD = 14 days;
-    uint public immutable MINIMUM_DELAY;
+    uint public MINIMUM_DELAY;
     uint public constant MAXIMUM_DELAY = 30 days;
 
     address public admin;
@@ -21,13 +21,14 @@ contract Timelock {
     mapping (bytes32 => bool) public queuedTransactions;
 
 
-    constructor(address admin_, uint delay_, uint minDelay_) {
+    function initialize(address pendingAdmin_, uint delay_, uint minDelay_) external {
+        require(pendingAdmin == address(0) && admin == address(0), "Timelock: Uninitalized");
         MINIMUM_DELAY = minDelay_;
         require(delay_ >= minDelay_, "Timelock: Delay must exceed minimum delay.");
         require(delay_ <= MAXIMUM_DELAY, "Timelock: Delay must not exceed maximum delay.");
-        require(admin_ != address(0), "Timelock: Admin must not be 0 address");
+        require(pendingAdmin_ != address(0), "Timelock: Admin must not be 0 address");
 
-        admin = admin_;
+        pendingAdmin = pendingAdmin_;
         delay = delay_;
     }
 

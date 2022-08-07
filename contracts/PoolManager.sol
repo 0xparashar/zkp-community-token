@@ -5,21 +5,35 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "./PoolToken.sol";
-import "./Timelock.sol";
-import "./Governor.sol";
 
+interface ITimelock {
+    function initialize(address admin_, uint delay_, uint minDelay_) external;
+    function setPendingAdmin(address pendingAdmin_) external;
+}
+
+interface IGovernor {
+    function initialize(address communityToken_, uint id,address timelock_, address comp_, uint votingPeriod_, uint votingDelay_, uint proposalThreshold_) external;
+}
+
+interface ICommunityToken {
+    function balanceOf(address account, uint256 id) external view returns (uint256);
+
+    function exists(uint id) external view returns (bool);
+}
 interface IPrivateAirdrop {
     function communityAdmin(uint id) external view returns(address);
+    function communityToken() external view returns(ICommunityToken);
 }
 
 contract PoolManager {
 
     struct PoolInfo {
         PoolToken poolToken;
-        Timelock timelock;
-        Governor governor;
+        ITimelock timelock;
+        IGovernor governor;
         uint poolRatio;
         address fundingToken;
     }
@@ -30,10 +44,14 @@ contract PoolManager {
 
     mapping(uint => PoolInfo) public poolInfos;
 
+    address governorImplementation;
+    address timelockImplementation;
 
-    constructor(address _privateAirdrop,address _communityToken){
+    constructor(address _privateAirdrop, address _governorImpl, address _timelockImpl){
         privateAirdrop = IPrivateAirdrop(_privateAirdrop);
-        communityToken = ICommunityToken(_communityToken);
+        communityToken = privateAirdrop.communityToken();
+        governorImplementation = _governorImpl;
+        timelockImplementation = _timelockImpl;
     } 
 
     function createPool(uint id, string memory name, string memory symbol, uint poolRatio, address fundingToken) external {
@@ -48,13 +66,12 @@ contract PoolManager {
             poolToken : new PoolToken(name, symbol),
             poolRatio : poolRatio,
             fundingToken : fundingToken,
-            timelock: new Timelock(address(this), 2 days, 1 days),
-            governor: new Governor()
+            timelock: ITimelock(Clones.clone(timelockImplementation)),
+            governor: IGovernor(Clones.clone(governorImplementation))
         });
+        poolInfo.timelock.initialize(address(poolInfo.governor), 2 days, 1 days);
 
-        poolInfo.timelock.setPendingAdmin(address(poolInfo.governor));
-
-        poolInfo.governor.initialize(address(communityToken),id,address(poolInfo.timelock), address(poolInfo.poolToken), 5 days, 3600, 1000e18);
+        poolInfo.governor.initialize(address(communityToken),id,address(poolInfo.timelock), address(poolInfo.poolToken), 11520, 3600, 1000e18);
 
         poolInfos[id] = poolInfo;
     }
@@ -72,7 +89,7 @@ contract PoolManager {
 
         require(poolToken.balanceOf(address(this)) >=  tokenToBeTransferred, "Invalid Amount");
 
-        require(IERC20(poolInfo.fundingToken).transferFrom(msg.sender, address(this), fundingAmount), "Funding Token transfer failed");
+        require(IERC20(poolInfo.fundingToken).transferFrom(msg.sender, address(poolInfo.timelock), fundingAmount), "Funding Token transfer failed");
 
         poolToken.transfer(msg.sender, tokenToBeTransferred);
 
