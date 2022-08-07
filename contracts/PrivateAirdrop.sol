@@ -23,6 +23,8 @@ contract PrivateAirdrop is Ownable {
 
     mapping(uint => string) public communities;
 
+    mapping(uint => address) public communityAdmin;
+
     uint public totalCommunities;
 
     uint256 constant SNARK_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -66,7 +68,7 @@ contract PrivateAirdrop is Ownable {
         totalCommunities++;
         
         communityToken.mint(msg.sender, totalCommunities - 1, 1);
-        
+        communityAdmin[totalCommunities - 1] = msg.sender;
         emit NewCommunity(name, totalCommunities - 1, msg.sender);
     }
 
